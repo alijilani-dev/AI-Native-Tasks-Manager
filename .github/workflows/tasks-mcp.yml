@@ -15,7 +15,7 @@ defaults:
 
 env:
   REGISTRY: ghcr.io
-  IMAGE_NAME: ${{ github.repository_owner }}/tasks-mcp
+  IMAGE_NAME: ${{ github.repository }}/tasks-mcp
 
 jobs:
   check:
