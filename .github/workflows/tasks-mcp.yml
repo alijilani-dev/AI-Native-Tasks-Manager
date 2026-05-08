@@ -1,0 +1,72 @@
+name: tasks-mcp
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "services/tasks_mcp/**"
+  pull_request:
+    paths:
+      - "services/tasks_mcp/**"
+
+defaults:
+  run:
+    working-directory: services/tasks_mcp
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository_owner }}/tasks-mcp
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.12", "3.13"]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Install dependencies
+        run: uv sync --all-groups
+
+      - name: Lint
+        run: uv run ruff check tasks_mcp/
+
+      - name: Type check
+        run: uv run mypy tasks_mcp/ --exclude 'tasks_mcp/tests/'
+
+      - name: Test
+        run: uv run pytest tasks_mcp/tests/ -v --tb=short
+
+  build-and-push:
+    needs: check
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Log in to ghcr.io
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push
+        uses: docker/build-push-action@v6
+        with:
+          context: services/tasks_mcp
+          file: services/tasks_mcp/Dockerfile
+          push: true
+          tags: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest

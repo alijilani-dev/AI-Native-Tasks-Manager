@@ -1,0 +1,8 @@
+import os
+
+PORT = int(os.environ.get("TASKS_MCP_PORT", "8000"))
+LIMIT_DEFAULT = 20
+LIMIT_MAX = 100
+LIMIT_MIN = 1
+CHAR_LIMIT = 25000
+USER_ID_DEFAULT = "default"

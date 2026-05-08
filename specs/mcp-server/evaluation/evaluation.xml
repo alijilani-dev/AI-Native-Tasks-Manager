@@ -1,0 +1,42 @@
+<evaluation>
+  <qa_pair>
+    <question>Create a task called "Buy groceries" with priority 3 for user "alice". What is the ID of the created task?</question>
+    <answer>A UUID string is returned as the "id" field in the response. The task has title "Buy groceries", type "task", priority 3, and status "pending".</answer>
+  </qa_pair>
+  <qa_pair>
+    <question>Create an appointment called "Dentist" starting at "2026-05-07T14:00:00Z" and ending at "2026-05-07T15:00:00Z" for user "default". What type is the created item?</question>
+    <answer>appointment</answer>
+  </qa_pair>
+  <qa_pair>
+    <question>After creating a task and an appointment for user "default", how many work items does tasks_review return when called with user_id="default"?</question>
+    <answer>2</answer>
+  </qa_pair>
+  <qa_pair>
+    <question>Create a task called "Write report". Then modify its title to "Write final report". What is the new title returned by tasks_modify?</question>
+    <answer>Write final report</answer>
+  </qa_pair>
+  <qa_pair>
+    <question>Create a task called "Complete project". Then resolve it with status "completed". What status is returned by tasks_resolve?</question>
+    <answer>completed</answer>
+  </qa_pair>
+  <qa_pair>
+    <question>Create a task called "Temp". Then remove it using tasks_remove. What does the response contain?</question>
+    <answer>{"deleted": true, "id": "&lt;item_id&gt;"}</answer>
+  </qa_pair>
+  <qa_pair>
+    <question>If you call tasks_modify with an item_id that does not exist ("nonexistent"), what error message is returned?</question>
+    <answer>Error: Item not found. Check the item_id and try again.</answer>
+  </qa_pair>
+  <qa_pair>
+    <question>Create 5 tasks for user "default". Call tasks_review with limit=3 and offset=0. How many items are in the response and is has_more true?</question>
+    <answer>count=3, has_more=true</answer>
+  </qa_pair>
+  <qa_pair>
+    <question>Create a task for user "alice". Then call tasks_review for user "bob". Does bob see alice's task?</question>
+    <answer>No. Bob's review returns zero items from alice's scope.</answer>
+  </qa_pair>
+  <qa_pair>
+    <question>Call tasks_review with response_format="markdown". Does the response start with a "#" character?</question>
+    <answer>Yes, the markdown response starts with "# Work Items" header.</answer>
+  </qa_pair>
+</evaluation>
