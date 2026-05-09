@@ -1,0 +1,45 @@
+[project]
+name = "tasks-manager-agent"
+version = "0.1.0"
+description = "Tasks Manager Agent — AI-native task management using OpenAI Agents SDK + SandboxAgent"
+requires-python = ">=3.12"
+dependencies = [
+    "openai-agents>=0.1.8",
+    "openai>=2.25.0",
+    "python-dotenv>=1.1.0",
+]
+
+[project.scripts]
+tasks-manager-agent = "tasks_manager_agent.main:main"
+
+[tool.ruff]
+line-length = 120
+target-version = "py312"
+src = ["."]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "N", "W"]
+
+[tool.mypy]
+python_version = "3.12"
+strict = false
+warn_unused_configs = true
+warn_redundant_casts = true
+warn_unused_ignores = true
+disallow_untyped_defs = false
+ignore_missing_imports = true
+exclude = [
+    ".venv/",
+]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+
+[dependency-groups]
+dev = [
+    "mypy>=1.20.0",
+    "pytest>=9.0.0",
+    "pytest-asyncio>=0.25.0",
+    "ruff>=0.15.0",
+]
