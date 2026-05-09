@@ -4,7 +4,7 @@ from pathlib import Path
 from agents import Agent, Runner
 from agents.mcp import MCPServerStreamableHttp
 
-from tasks_manager_agent.config import build_gemini_model
+from tasks_manager_agent.config import build_model
 
 SKILL_PATH = Path(__file__).resolve().parents[3] / ".agents" / "skills" / "tasks-manager" / "SKILL.md"
 
@@ -34,7 +34,7 @@ async def main():
         agent = Agent(
             name="Tasks Manager Agent",
             instructions=instructions,
-            model=build_gemini_model(),
+            model=build_model(),
             mcp_servers=[mcp_server],
         )
 

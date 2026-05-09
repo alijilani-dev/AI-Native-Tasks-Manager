@@ -10,7 +10,7 @@ from agents.run import RunConfig
 from agents.sandbox import SandboxAgent, SandboxRunConfig
 from agents.sandbox.capabilities import Capabilities
 
-from tasks_manager_agent.config import build_gemini_model
+from tasks_manager_agent.config import build_model
 
 # Optional: Docker sandbox client (requires docker SDK)
 # from agents.sandbox.sandboxes.docker import DockerSandboxClient, DockerSandboxClientOptions
@@ -20,7 +20,7 @@ def build_sandbox_agent() -> SandboxAgent:
     return SandboxAgent(
         name="Tasks Manager Agent",
         instructions="You are a helpful assistant. Respond concisely.",
-        model=build_gemini_model(),
+        model=build_model(),
         capabilities=Capabilities.default(),
     )
 
