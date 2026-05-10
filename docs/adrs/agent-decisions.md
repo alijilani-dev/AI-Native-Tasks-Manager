@@ -31,8 +31,7 @@ guardrails, structured outputs, sessions, and sandbox agent support.
 
 **Context:**
 The SDK offers two orchestration patterns: (A) a single agent with MCP tools,
-and (B) a triage agent with handoffs to specialist agents. The system also has
-an Appointment Booking Agent (future) and notification triggers.
+and (B) a triage agent with handoffs to specialist agents.
 
 **Decision:**
 Use **Option A — single `SandboxAgent` with MCP tools**.
@@ -41,87 +40,74 @@ Use **Option A — single `SandboxAgent` with MCP tools**.
 agent = SandboxAgent(
     name="Tasks Manager Agent",
     instructions=SKILL.md_content,
-    model=model,
-    mcp_servers=[MCPServerStreamableHttp(params={"url": "http://localhost:8000/mcp"})],
+    model=FailoverModel(primary=Gemini, secondary=OpenAI),
+    mcp_servers=[MCPServerStreamableHttp(url="http://tasks-mcp:8000/mcp")],
+    default_manifest=Manifest(entries={"workspace": Dir()}),
     capabilities=Capabilities.default(),
 )
 ```
 
-**Reasons:**
-- tasks_mcp encapsulates all task mutation logic — no need for multiple agents.
-- The `SandboxAgent` workspace provides a persistent filesystem for artifacts.
-- Simpler to build, test, and debug than multi-agent handoff topology.
-- Routing to the Appointment Booking Agent (future) can be added later.
-
 **Consequences:**
 - Positive: Single code path — one agent, one runner.
-- Positive: Sandbox workspace gives flexibility for future capabilities.
-- Positive: Scales to multi-agent later via handoffs without rewriting.
+- Positive: Sandbox workspace for artifacts, logs, and script execution.
+- Positive: Scales to multi-agent later via handoffs.
 
 ---
 
-## Decision 3: Use SandboxAgent (not plain Agent)
+## Decision 3: Use SandboxAgent
 
 **Date:** 2026-05-09
 
 **Status:** Accepted
 
 **Context:**
-The OpenAI Agents SDK provides `SandboxAgent` — an agent primitive with a
-persistent filesystem workspace, shell access, file editing, and sandbox
-lifecycle management.
+`SandboxAgent` provides a persistent filesystem workspace, shell access, file
+editing, and sandbox lifecycle management via sandbox clients.
 
 **Decision:**
-Use **`SandboxAgent`** (not plain `Agent`).
+Use `SandboxAgent`. Locally requires Docker on Windows (`DockerSandboxClient`)
+or `UnixLocalSandboxClient` on Linux/macOS.
 
-**Reasons:**
-- Persistent workspace for artifact storage, exported task lists, scripts.
-- Sandbox capabilities (Filesystem, Shell, Memory) enable future extensibility.
-- Session isolation — each user gets their own workspace.
+**Stack:**
+- `SandboxAgent` — agent definition with `default_manifest` + `capabilities`
+- `Manifest` — workspace contract (files, dirs, repos)
+- `Capabilities.default()` — `Filesystem`, `Shell`, `Compaction`
+- `SandboxRunConfig(client=DockerSandboxClient(...))` — per-run sandbox session
 
 **Consequences:**
-- Positive: Persistent workspace for artifacts and temporary files.
-- Positive: Session isolation.
-- Neutral: Requires sandbox client (UnixLocalSandboxClient for local dev).
+- Positive: Persistent workspace for task exports, notification scripts, etc.
+- Positive: Session isolation per user.
+- Negative: Requires Docker on Windows for local development.
 
 ---
 
-## Decision 4: Model Selection — Gemini 2.5 Flash Lite Preview
+## Decision 4: Model Selection — Failover (Gemini Primary + OpenAI Secondary)
 
 **Date:** 2026-05-09
 
 **Status:** Accepted
 
 **Context:**
-The system must be LLM-agnostic per project constitution. We need an initial
-model that balances cost, speed, and capability for task management workflows.
+The system must be LLM-agnostic. We need a failover mechanism so if the primary
+model provider fails, the secondary takes over without user-visible errors.
 
 **Decision:**
-Start with **`gemini-2.5-flash-lite-preview`** via OpenAI-compatible endpoint.
-OpenAI models can be swapped in later for higher quality when needed.
+Use a `FailoverModel` that wraps two `OpenAIChatCompletionsModel` instances:
 
-```python
-from openai import AsyncOpenAI
-from agents import OpenAIChatCompletionsModel, set_tracing_disabled
+| Role | Provider | Configured via |
+|------|----------|----------------|
+| Primary | Gemini | `TASKS_AGENT_PRIMARY_MODEL` + `TASKS_AGENT_PRIMARY_API_KEY` |
+| Secondary | OpenAI | `TASKS_AGENT_SECONDARY_MODEL` + `TASKS_AGENT_SECONDARY_API_KEY` |
 
-set_tracing_disabled(True)
-
-client = AsyncOpenAI(
-    api_key=os.environ["GEMINI_API_KEY"],
-    base_url="https://generativelanguage.googleapis.com/v1beta/openai/",
-)
-
-model = OpenAIChatCompletionsModel(
-    model="gemini-2.5-flash-lite-preview",
-    openai_client=client,
-)
-```
+On any exception from the primary, the secondary is called automatically.
+Tracing is sent to the OpenAI Traces dashboard via `set_tracing_export_api_key()`
+using the secondary API key.
 
 **Consequences:**
-- Positive: Cost-effective and fast.
-- Positive: LLM-agnostic — swapping models requires changing only the model parameter.
-- Negative: Chat Completions API lacks some Responses-only features.
-- Negative: OpenAI tracing disabled — must use custom processor or disable.
+- Positive: Transparent failover — no user-visible errors.
+- Positive: Tracing works for both stacks via OpenAI dashboard.
+- Negative: Traces show "model not found" for Gemini calls (expected — Gemini
+  model names don't exist on OpenAI).
 
 ---
 
@@ -132,35 +118,15 @@ model = OpenAIChatCompletionsModel(
 **Status:** Accepted
 
 **Context:**
-First time using the OpenAI Agents SDK. Rather than designing everything upfront,
-we build incrementally to validate each layer works. Local development is on
-Windows where `UnixLocalSandboxClient` is unavailable, so we use plain `Agent`
-locally and `SandboxAgent` on Linux deployment targets.
+First time using the OpenAI Agents SDK. We build incrementally.
 
 **Decision:**
-Build in stages: project scaffold → hello world agent → connect MCP → full SKILL.md instructions.
-
-**Phase 1:** Create project with `uv`, install `openai-agents`, `python-dotenv`.
-Verify a minimal `Agent` runs with Gemini.
-
-**Phase 2:** Connect to tasks_mcp via `MCPServerStreamableHttp`. Verify tools are
-discoverable and callable.
-
-**Phase 3:** Load SKILL.md content as agent instructions. Test full task management
-workflows.
-
-**Local vs Production:**
-- **Local (Windows):** Plain `Agent` — works cross-platform, no sandbox dependency.
-- **Production (Linux/K8s):** `SandboxAgent` with `DockerSandboxClient` or hosted
-  provider. Sandbox version is scaffolded at `tasks_manager_agent/sandbox_agent.py`.
-- Both use the same model, instructions, and MCP server — switching requires only
-  changing the agent class and run config.
+Build in stages: project scaffold → hello world model test → SandboxAgent with
+MCP → full SKILL.md instructions.
 
 All secrets stored in `.env` loaded via `python-dotenv`. Production secret
-strategy (K8s Secrets, etc.) deferred.
+strategy deferred.
 
 **Consequences:**
 - Positive: Validates each layer before moving to the next.
 - Positive: Catches framework-specific issues early.
-- Positive: Same SKILL.md instructions work for both Agent and SandboxAgent.
-- Negative: Need to validate SandboxAgent separately on Linux.
