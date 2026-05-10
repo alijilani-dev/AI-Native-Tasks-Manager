@@ -4,14 +4,12 @@ from pathlib import Path
 from agents import Agent, Runner
 from agents.mcp import MCPServerStreamableHttp
 
-from tasks_manager_agent.config import build_model
+from tasks_manager_agent.config import build_failover_model
 
 SKILL_PATH = Path(__file__).resolve().parents[3] / ".agents" / "skills" / "tasks-manager" / "SKILL.md"
 
 
 def load_instructions() -> str:
-    """Load the Tasks Manager Agent instructions from SKILL.md."""
-    # Strip YAML frontmatter (--- ... ---)
     text = SKILL_PATH.read_text(encoding="utf-8")
     if text.startswith("---"):
         _, _, body = text.partition("---")
@@ -34,7 +32,7 @@ async def main():
         agent = Agent(
             name="Tasks Manager Agent",
             instructions=instructions,
-            model=build_model(),
+            model=build_failover_model(),
             mcp_servers=[mcp_server],
         )
 
