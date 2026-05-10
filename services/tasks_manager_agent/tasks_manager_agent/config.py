@@ -1,6 +1,6 @@
 import os
 
-from agents import OpenAIChatCompletionsModel, set_tracing_disabled
+from agents import OpenAIChatCompletionsModel, set_tracing_export_api_key
 from dotenv import load_dotenv
 from openai import AsyncOpenAI
 
@@ -8,7 +8,7 @@ from tasks_manager_agent.failover_model import FailoverModel
 
 load_dotenv()
 
-set_tracing_disabled(True)
+set_tracing_export_api_key(os.environ["TASKS_AGENT_SECONDARY_API_KEY"])
 
 # Primary stack (Gemini)
 _PRIMARY_API_KEY = os.environ["TASKS_AGENT_PRIMARY_API_KEY"]
